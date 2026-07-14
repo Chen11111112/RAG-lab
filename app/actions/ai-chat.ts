@@ -1,6 +1,6 @@
 'use server'
 
-import { searchRag } from '@/app/actions/embeddingActions'
+import { searchRag } from '@/app/actions/ragActions'
 import { fetchWithRetry } from '@/lib/nvidia'
 
 // NVIDIA NIM 支援模型清單（依序嘗試）
