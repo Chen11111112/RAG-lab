@@ -17,9 +17,11 @@ export default function ChatInterface() {
 
     if (result.success) {
       setResponse(result.message)
+    } else {
+      // 失敗時也顯示錯誤，避免畫面空白誤以為沒回應
+      setResponse(`錯誤：${result.error ?? '無法取得 AI 回應'}`)
     }
     setLoading(false)
-    console.log(response) // DEBUG 第二方法: 盡可能的印出來
     console.log(result)
   }
 
