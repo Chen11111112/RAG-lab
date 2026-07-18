@@ -46,7 +46,7 @@ export default function Home() {
             className="text-sm"
             style={{ color: "var(--chat-muted)" }}
           >
-            NVIDIA NIM · Supabase · LangChain
+            本專案為結合 NVIDIA NIM · Supabase · LangChain 並透過Next.js全端框架實作RAG。
           </span>
         </div>
 
