@@ -17,8 +17,6 @@ const syne = Syne({
 
 export default function Layout({
   children,
-}: {
-  children: React.ReactNode;
 }) {
   return (
     <html lang="zh-Hant" className={`${figtree.variable} ${syne.variable}`}>
