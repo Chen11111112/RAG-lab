@@ -7,7 +7,7 @@ create extension if not exists vector;
 create table if not exists documents (
   id bigserial primary key,
   content text not null,
-  embedding vector(1024) not null,
+  embedding vector(2048) not null,
   created_at timestamptz not null default now()
 );
 
@@ -29,9 +29,11 @@ alter table documents alter column created_at set default now();
 create index if not exists documents_source_hash_idx
   on documents (source, source_hash);
 
+alter table documents enable row level security;
+
 -- 3. 語意搜尋 RPC
 create or replace function match_documents (
-  query_embedding vector(1024),
+  query_embedding vector(2048),
   match_threshold float default 0.2,
   match_count int default 4
 )
@@ -54,3 +56,17 @@ begin
   limit match_count;
 end;
 $$;
+do $$
+declare r record;
+begin
+  for r in (
+    select policyname from pg_policies
+    where schemaname = 'public' and tablename = 'documents'
+  ) loop
+    execute format('drop policy if exists %I on public.documents', r.policyname);
+  end loop;
+end $$;
+
+alter table public.documents disable row level security;
+grant all on table public.documents to anon, authenticated, service_role;
+grant usage, select on sequence documents_id_seq to anon, authenticated, service_role;

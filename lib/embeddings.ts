@@ -1,7 +1,7 @@
 import { Embeddings, type EmbeddingsParams } from '@langchain/core/embeddings'
 import { OpenAI } from 'openai'
 
-const MODEL = 'nvidia/nv-embedqa-e5-v5'
+const MODEL = 'nvidia/nemotron-3-embed-1b'
 const BASE_URL = 'https://integrate.api.nvidia.com/v1'
 
 type InputType = 'passage' | 'query'

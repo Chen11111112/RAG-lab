@@ -55,7 +55,7 @@ export default function ChatInterface() {
               fontWeight: 800,
             }}
           >
-            Sprint 手冊助理
+            Scrum 助理
           </h1>
           <p
             className="mt-3 max-w-md text-[0.95rem] leading-relaxed"
@@ -91,13 +91,14 @@ export default function ChatInterface() {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             disabled={loading}
-            placeholder="例如：Sprint 規劃要準備什麼？"
+            placeholder="例如：Scrum 是什麼? 五大敏捷因素有哪五大?"
             className="w-full resize-y rounded-xl border px-4 py-3 text-[0.95rem] leading-relaxed outline-none transition focus:ring-2 disabled:opacity-60"
             style={{
               borderColor: 'var(--chat-border)',
               background: 'rgba(255,255,255,0.9)',
               color: 'var(--chat-ink)',
               fontFamily: 'var(--font-body), sans-serif',
+              resize: "none",
             }}
             onFocus={(e) => {
               e.currentTarget.style.boxShadow = '0 0 0 3px rgba(11, 110, 79, 0.18)'

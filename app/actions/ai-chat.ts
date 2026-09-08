@@ -3,11 +3,9 @@
 import { searchRag } from '@/app/actions/ragActions'
 import { fetchWithRetry } from '@/lib/nvidia'
 
-// NVIDIA NIM 支援模型清單（依序嘗試）
+// NVIDIA NIM 支援模型清單
 const CHAT_MODELS = [
-  'deepseek-ai/deepseek-v4-flash',
-  'meta/llama-3.1-8b-instruct',
-  'google/gemma-2-9b-it',
+  'deepseek-ai/deepseek-v4-pro-0813',
 ]
 
 /**
@@ -65,7 +63,7 @@ export async function getAIResponse(prompt: string) {
             model,
             messages,
             temperature: 0.3,
-            max_tokens: 1024,
+            max_tokens: 2048,
           }),
         },
         { retries: 3, label: `chat:${model}` }

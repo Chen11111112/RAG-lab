@@ -41,7 +41,7 @@ export default function Layout({
                   color: "var(--chat-ink)",
                 }}
               >
-                Sprint 手冊
+                Scrum 助理
               </span>
             </Link>
 
