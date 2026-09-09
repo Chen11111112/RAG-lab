@@ -5,7 +5,7 @@ import { fetchWithRetry } from '@/lib/nvidia'
 
 // NVIDIA NIM 支援模型清單
 const CHAT_MODELS = [
-  'deepseek-ai/deepseek-v4-pro-0813',
+  'deepseek-ai/deepseek-r1',
 ]
 
 /**
