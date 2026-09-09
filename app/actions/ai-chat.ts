@@ -5,7 +5,7 @@ import { fetchWithRetry } from '@/lib/nvidia'
 
 // NVIDIA NIM 支援模型清單
 const CHAT_MODELS = [
-  'moonshotai/kimi-k3',
+  'meta/muse-glimmer-30b',
 ]
 
 /**
