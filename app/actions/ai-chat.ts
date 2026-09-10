@@ -24,7 +24,7 @@ export async function getAIResponse(prompt: string) {
     try {
       matches = await searchRag(prompt, 4)
     }catch (err) {
-        return { success: false as const, error: '現在有點問題 正在處理中w 請見諒!' }
+        return { success: false as const, error: '資料庫架構調整中... 請稍後! 有Scrum 問題請直接問陳泓毓本人ww' }
     }
     
     const context = matches
