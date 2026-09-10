@@ -5,10 +5,10 @@ import { fetchWithRetry } from '@/lib/nvidia'
 
 // NVIDIA NIM 支援模型清單
 const CHAT_MODELS = [
-  'meta/muse-glimmer-30b',
+  'deepseek-ai/deepseek-v4-pro-0813',
 ]
 
-/**
+/*
  * AI 聊天 Server Action（含 RAG）
  * 流程：問題 → 檢索 rag.md 相關段落 → 注入 prompt → 呼叫 LLM
  */
@@ -20,7 +20,13 @@ export async function getAIResponse(prompt: string) {
 
   try {
     // 1. 從 Supabase documents（rag.md 索引）找出最相關段落
-    const matches = await searchRag(prompt, 4)
+    let matches
+    try {
+      matches = await searchRag(prompt, 4)
+    }catch (err) {
+        return { success: false as const, error: '現在有點問題 正在處理中w 請見諒!' }
+    }
+    
     const context = matches
       .filter((m) => m.similarity > 0.2)
       .map((m, i) => `[來源 ${i + 1}]\n${m.content}`)
@@ -51,7 +57,10 @@ export async function getAIResponse(prompt: string) {
     // 3. 呼叫 NIM；503 時重試，並可換備援模型
     let lastError = ''
     for (const model of CHAT_MODELS) {
-      const response = await fetchWithRetry(
+      let response
+      
+      try {
+        response = await fetchWithRetry(
         'https://integrate.api.nvidia.com/v1/chat/completions',
         {
           method: 'POST',
@@ -67,7 +76,12 @@ export async function getAIResponse(prompt: string) {
           }),
         },
         { retries: 3, label: `chat:${model}` }
-      )
+        )
+      }catch (err) {
+        lastError = `${model} 請求發生例外: ${err instanceof Error ? err.message : String(err)}`
+        continue
+      }
+
 
       const raw = await response.text()
 
@@ -102,6 +116,8 @@ export async function getAIResponse(prompt: string) {
     }
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error)
-    return { success: false as const, error: detail }
+    console.error("123123")
+    const text = "詳細錯誤:"
+    return { success: false as const, error:text+detail }
   }
 }
