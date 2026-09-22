@@ -17,6 +17,8 @@
 /.next/
 /out/
 
+# 7z
+*.7z
 # production
 /build
 

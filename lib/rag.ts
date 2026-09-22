@@ -8,7 +8,7 @@ const RAG_FILE = path.join(process.cwd(), 'rag.md')
 const CHUNK_SIZE = 800 // 單一片段最大字元數
 const CHUNK_OVERLAP = 150 // 相鄰片段重疊，避免句子被切斷失義
 
-// 檢索結果（資料來自 Supabase）
+// 檢索結果（資料來自 PostgreSQL）
 export type RagMatch = {
   id: number
   content: string
@@ -31,6 +31,14 @@ export function chunkMarkdown(text: string): string[] {
     .replace(/<\/?aside>/g, '')
     .replace(/\r\n/g, '\n')
     .trim()
+
+  // rag.md 已預先以 [CHUNK-xxx] 切塊時，直接沿用語意段落
+  if (/^### \[CHUNK-/m.test(cleaned)) {
+    return cleaned
+      .split(/\n(?=### \[CHUNK-)/)
+      .map((s) => s.trim())
+      .filter((c) => c.length > 40)
+  }
 
   const sections = cleaned
     .split(/\n(?=# )/)
@@ -74,7 +82,7 @@ export function cosineSimilarity(a: number[], b: number[]) {
   return dot / (Math.sqrt(na) * Math.sqrt(nb))
 }
 
-// 解析 Supabase / pgvector 回傳的 embedding（可能是 number[] 或字串）
+// 解析 pgvector 回傳的 embedding（可能是 number[] 或字串）
 export function parseEmbedding(value: unknown): number[] {
   if (Array.isArray(value)) return value as number[]
   if (typeof value === 'string') {

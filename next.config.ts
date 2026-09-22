@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  allowedDevOrigins: ["scrum-assistant.eshachem.com"],
+  devIndicators: false,
 };
 
 export default nextConfig;

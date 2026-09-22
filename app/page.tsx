@@ -8,7 +8,7 @@ export default function Home() {
         className="shell-grid pointer-events-none absolute inset-0 opacity-[0.28]"
       />
 
-      <div className="relative mx-auto flex max-w-2xl flex-col items-start gap-8">
+      <div className="relative mx-auto flex w-full max-w-2xl flex-col items-start gap-8">
         <div className="chat-rise">
           <p
             className="mb-3 text-[0.7rem] font-semibold tracking-[0.22em] uppercase"
@@ -36,7 +36,7 @@ export default function Home() {
             className="text-sm"
             style={{ color: "var(--chat-muted)" }}
           >
-            本專案為結合 NVIDIA NIM · Supabase · LangChain 並透過Next.js全端框架實作RAG。
+            本專案為結合 LiteLLM · PostgreSQL · LangChain 並透過 Next.js 全端框架實作 RAG。
           </span>
         </div>
 
@@ -86,17 +86,7 @@ export default function Home() {
         >
           
         </p>
-          <span className="text-sm"
-            style={{ color: "var(--chat-muted)" }}>
-            AI 模型服務可能因模型更新、服務調整、模型下架或 API 服務異常等因素，導致部分 AI 功能暫時無法正常使用。</span>
-            <span className="text-sm"
-            style={{ color: "var(--chat-muted)" }}>
-            若您遇到此問題，歡迎與我聯繫，我會協助確認問題狀況：https://hyc.eshachem.com/
-            </span>
-            <span className="text-sm"
-            style={{ color: "var(--chat-muted)" }}>
-            感謝您的理解與支持！
-          </span>
+
         </div>
 
         <p

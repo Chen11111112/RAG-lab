@@ -1,13 +1,13 @@
--- 在 Supabase Dashboard → SQL Editor 執行一次
+-- 09/12/2026更新: 因為supabase問題太多所以我改在本地建立向量資料庫，而sql也更改為以下版本
 
--- 1. 啟用 pgvector
+-- 1. 啟用 pgvector 擴充功能（需確保本機 PostgreSQL 已安裝 pgvector）
 create extension if not exists vector;
 
 -- 2. 建立 / 補強 documents 表
 create table if not exists documents (
   id bigserial primary key,
   content text not null,
-  embedding vector(2048) not null,
+  embedding vector(4096) not null,
   created_at timestamptz not null default now()
 );
 
@@ -17,23 +17,24 @@ alter table documents add column if not exists source_hash text;
 alter table documents add column if not exists chunk_index int;
 alter table documents add column if not exists created_at timestamptz;
 
+-- 填補舊資料的預設值
 update documents set source = 'rag.md' where source is null;
 update documents set source_hash = 'legacy' where source_hash is null;
 update documents set chunk_index = 0 where chunk_index is null;
 update documents set created_at = now() where created_at is null;
 
+-- 設定欄位預設值
 alter table documents alter column source set default 'rag.md';
 alter table documents alter column chunk_index set default 0;
 alter table documents alter column created_at set default now();
 
+-- 建立索引
 create index if not exists documents_source_hash_idx
   on documents (source, source_hash);
 
-alter table documents enable row level security;
-
--- 3. 語意搜尋 RPC
+-- 3. 語意搜尋 RPC (Stored Procedure)
 create or replace function match_documents (
-  query_embedding vector(2048),
+  query_embedding vector(4096),
   match_threshold float default 0.2,
   match_count int default 4
 )
@@ -56,6 +57,8 @@ begin
   limit match_count;
 end;
 $$;
+
+-- 4. 清理並關閉本地不需要的 RLS（Row Level Security）
 do $$
 declare r record;
 begin
@@ -68,5 +71,3 @@ begin
 end $$;
 
 alter table public.documents disable row level security;
-grant all on table public.documents to anon, authenticated, service_role;
-grant usage, select on sequence documents_id_seq to anon, authenticated, service_role;

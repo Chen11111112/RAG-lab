@@ -1,6 +1,7 @@
 'use server'
 
 import { getEmbeddings } from '@/lib/embeddings'
+import { getPool, toVectorLiteral } from '@/lib/db'
 import {
   chunkMarkdown,
   cosineSimilarity,
@@ -8,121 +9,139 @@ import {
   parseEmbedding,
   type RagMatch,
 } from '@/lib/rag'
-import { getSupabaseAdmin } from '@/lib/supabase'
 
 const SOURCE = 'rag.md'
 
 /**
- * 將 rag.md 切塊、以 LangChain embedding 後寫入 Supabase documents
+ * 將 rag.md 切塊、以 LangChain embedding 後寫入本地 PostgreSQL documents
  * source_hash 相同則跳過，避免重複呼叫 Embedding API
  */
 export async function ingestRagMd() {
-  const supabase = getSupabaseAdmin()
+  const pool = getPool()
   const embeddings = getEmbeddings()
   const { text, hash } = await getRagSourceHash()
+  const parts = chunkMarkdown(text)
 
-  const { count, error: countError } = await supabase
-    .from('documents')
-    .select('id', { count: 'exact', head: true })
-    .eq('source', SOURCE)
-    .eq('source_hash', hash)
-
-  if (countError) {
+  let count = 0
+  try {
+    const countResult = await pool.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM documents WHERE source = $1 AND source_hash = $2`,
+      [SOURCE, hash]
+    )
+    count = Number(countResult.rows[0]?.count ?? 0)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
     throw new Error(
-      `Supabase 查詢失敗（請先在 SQL Editor 執行 db/query.sql）: ${countError.message}`
+      `PostgreSQL 查詢失敗（請先在本地執行 db/LocalQuery.sql）: ${message}`
     )
   }
 
-  if ((count ?? 0) > 0) {
-    return { success: true, chunkCount: count ?? 0, cached: true }
+  if (count === parts.length && count > 0) {
+    return { success: true, chunkCount: count, cached: true }
   }
 
-  const { error: deleteError } = await supabase.from('documents').delete().eq('source', SOURCE)
-  if (deleteError) {
-    throw new Error(`Supabase 刪除舊索引失敗: ${deleteError.message}`)
+  try {
+    await pool.query(`DELETE FROM documents WHERE source = $1`, [SOURCE])
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    throw new Error(`PostgreSQL 刪除舊索引失敗: ${message}`)
   }
 
-  const parts = chunkMarkdown(text)
   const vectors = await embeddings.embedDocuments(parts)
 
-  const rows = parts.map((content, i) => ({
-    content,
-    embedding: vectors[i],
-    source: SOURCE,
-    source_hash: hash,
-    chunk_index: i,
-  }))
-
-  const { error: insertError } = await supabase.from('documents').insert(rows)
-  if (insertError) {
-    throw new Error(`Supabase 寫入失敗: ${insertError.message}`)
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    for (let i = 0; i < parts.length; i++) {
+      await client.query(
+        `INSERT INTO documents (content, embedding, source, source_hash, chunk_index)
+         VALUES ($1, $2::vector, $3, $4, $5)`,
+        [parts[i], toVectorLiteral(vectors[i]), SOURCE, hash, i]
+      )
+    }
+    await client.query('COMMIT')
+  } catch (err) {
+    await client.query('ROLLBACK')
+    const message = err instanceof Error ? err.message : String(err)
+    throw new Error(`PostgreSQL 寫入失敗: ${message}`)
+  } finally {
+    client.release()
   }
 
-  return { success: true, chunkCount: rows.length, cached: false }
+  return { success: true, chunkCount: parts.length, cached: false }
 }
 
-/** 優先用 match_documents RPC；若不存在則改為應用層餘弦相似度 */
-async function searchInSupabase(
+/** 優先用 match_documents；若不存在則改為應用層餘弦相似度 */
+async function searchInDatabase(
   queryEmbedding: number[],
   topK: number
 ): Promise<RagMatch[]> {
-  const supabase = getSupabaseAdmin()
+  const pool = getPool()
 
-  const { data, error } = await supabase.rpc('match_documents', {
-    query_embedding: queryEmbedding,
-    match_threshold: 0.2,
-    match_count: topK,
-  })
-
-  if (!error) {
-    return (data ?? []) as RagMatch[]
-  }
-
-  const { data: rows, error: selectError } = await supabase
-    .from('documents')
-    .select('id, content, embedding')
-
-  if (selectError) {
-    throw new Error(
-      `Supabase 搜尋失敗: ${error.message}; 備援讀取也失敗: ${selectError.message}`
+  try {
+    const { rows } = await pool.query<{
+      id: string
+      content: string
+      similarity: number
+    }>(
+      `SELECT id, content, similarity
+       FROM match_documents($1::vector, $2, $3)`,
+      [toVectorLiteral(queryEmbedding), 0.2, topK]
     )
-  }
 
-  return (rows ?? [])
-    .map((row) => ({
-      id: row.id as number,
-      content: row.content as string,
-      similarity: cosineSimilarity(queryEmbedding, parseEmbedding(row.embedding)),
+    return rows.map((row) => ({
+      id: Number(row.id),
+      content: row.content,
+      similarity: row.similarity,
     }))
-    .filter((row) => row.similarity > 0.2)
-    .sort((a, b) => b.similarity - a.similarity)
-    .slice(0, topK)
+  } catch (rpcError) {
+    const rpcMessage = rpcError instanceof Error ? rpcError.message : String(rpcError)
+
+    const { rows, rowCount } = await pool.query<{
+      id: string
+      content: string
+      embedding: string
+    }>(`SELECT id, content, embedding::text AS embedding FROM documents`)
+
+    if (rowCount === null) {
+      throw new Error(`PostgreSQL 搜尋失敗: ${rpcMessage}`)
+    }
+
+    return rows
+      .map((row) => ({
+        id: Number(row.id),
+        content: row.content,
+        similarity: cosineSimilarity(queryEmbedding, parseEmbedding(row.embedding)),
+      }))
+      .filter((row) => row.similarity > 0.2)
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, topK)
+  }
 }
 
-/** RAG 檢索：確保索引在 Supabase → LangChain query embedding → 回傳最相關片段 */
+/** RAG 檢索：確保索引在 PostgreSQL → LangChain query embedding → 回傳最相關片段 */
 export async function searchRag(query: string, topK = 4): Promise<RagMatch[]> {
   await ingestRagMd()
   const queryEmbedding = await getEmbeddings().embedQuery(query)
-  return searchInSupabase(queryEmbedding, topK)
+  return searchInDatabase(queryEmbedding, topK)
 }
 
-/** 手動寫入單一段落到 Supabase */
+/** 手動寫入單一段落到 PostgreSQL */
 export async function embedAndStore(text: string) {
-  const supabase = getSupabaseAdmin()
+  const pool = getPool()
   const embeddings = getEmbeddings()
   const [embedding] = await embeddings.embedDocuments([text])
   const { hash } = await getRagSourceHash()
 
-  const { error } = await supabase.from('documents').insert({
-    content: text,
-    embedding,
-    source: 'manual',
-    source_hash: hash,
-    chunk_index: 0,
-  })
-
-  if (error) {
-    return { success: false, error: error.message }
+  try {
+    await pool.query(
+      `INSERT INTO documents (content, embedding, source, source_hash, chunk_index)
+       VALUES ($1, $2::vector, $3, $4, $5)`,
+      [text, toVectorLiteral(embedding), 'manual', hash, 0]
+    )
+    return { success: true }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { success: false, error: message }
   }
-  return { success: true }
 }
