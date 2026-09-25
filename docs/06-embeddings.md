@@ -60,7 +60,7 @@ this.client = new OpenAI({
 
 `baseURL` 是指向 LiteLLM Proxy，不是直接指向 OpenAI 官方。
 
-`LiteLLMEmbeddings` 繼承 LangChain 的 `Embeddings`，所以必須實作 `embedDocuments` 與 `embedQuery`。RAG 流程只透過這兩個方法進 LiteLLM。
+`LiteLLMEmbeddings` 提供 `embedDocuments` 與 `embedQuery`。RAG 流程只透過這兩個方法進 LiteLLM。
 
 
 ## 2. `embedDocuments` — index chunks
@@ -125,18 +125,16 @@ async embedQuery(text: string): Promise<number[]> {
 
 ```tsx
 // lib/embeddings.ts / embedBatch()
-return this.caller.call(async () => {
-  const response = await this.client.embeddings.create({
-    model: this.model,
-    input: texts,
-    encoding_format: 'float',
-  })
-
-  return response.data
-    .slice()
-    .sort((a, b) => a.index - b.index)
-    .map((item) => item.embedding)
+const response = await this.client.embeddings.create({
+  model: this.model,
+  input: texts,
+  encoding_format: 'float',
 })
+
+return response.data
+  .slice()
+  .sort((a, b) => a.index - b.index)
+  .map((item) => item.embedding)
 ```
 
 對應 LiteLLM：
@@ -146,7 +144,7 @@ POST /v1/embeddings
 Authorization: Bearer <LITELLM_API_KEY>
 ```
 
-`this.caller.call` 是 LangChain `Embeddings` 內建的重試包裝。聊天那條路的 `fetchWithRetry`（429 / 503）在 `lib/litellm.ts`，**不會**經過這裡。
+`embedBatch` 遇到 429 / 503 會指數退避重試，次數與間隔比照 `lib/litellm.ts` 的 `fetchWithRetry`。聊天那條路仍直接走 `fetchWithRetry`，**不會**經過這裡。
 
 回傳後依 `index` 排序，再取出 `embedding`，避免 API 打亂順序時 `vectors[i]` 對錯 `parts[i]`。
 

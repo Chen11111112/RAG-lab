@@ -116,7 +116,7 @@ const client = new OpenAI({
 await client.embeddings.create({ model: 'Qwen3-Embedding', input: texts })
 ```
 
-LangChain 的 `LiteLLMEmbeddings` 類別實作 `embedDocuments` / `embedQuery`，供 RAG 索引與檢索使用。
+`LiteLLMEmbeddings` 實作 `embedDocuments` / `embedQuery`，供 RAG 索引與檢索使用。
 
 ### 5.3 聊天（`app/actions/ai-chat.ts`）
 

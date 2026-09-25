@@ -7,7 +7,7 @@ import { chunkMarkdown, getRagSourceHash, type RagMatch } from '@/lib/rag'
 const SOURCE = 'rag.md'
 
 /**
- * 將 rag.md 切塊、以 LangChain embedding 後寫入本地 PostgreSQL documents
+ * 將 rag.md 切塊、embedding 後寫入本地 PostgreSQL documents
  * source_hash 相同則跳過，避免重複呼叫 Embedding API
  */
 export async function ingestRagMd() {
@@ -87,7 +87,7 @@ async function searchInDatabase(
   }))
 }
 
-/** RAG 檢索：確保索引在 PostgreSQL → LangChain query embedding → 回傳最相關片段 */
+/** RAG 檢索：確保索引在 PostgreSQL → query embedding → 回傳最相關片段 */
 export async function searchRag(query: string, topK = 4): Promise<RagMatch[]> {
   await ingestRagMd()
   const queryEmbedding = await getEmbeddings().embedQuery(query)

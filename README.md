@@ -6,7 +6,6 @@
 * starter
 * feature/local-rag
 * feature/supabase-rag
-* feature/langchain-rag
 
 # DEBUG
 1. F12 Network -> 前端還是後端的問題

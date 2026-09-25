@@ -14,7 +14,7 @@ export default function Home() {
             className="mb-3 text-[0.7rem] font-semibold tracking-[0.22em] uppercase"
             style={{ color: "var(--chat-accent)" }}
           >
-            HyC · LangChain RAG
+            HyC · RAG
           </p>
           <h1
             className="text-5xl leading-[0.95] tracking-tight sm:text-6xl"
@@ -36,7 +36,7 @@ export default function Home() {
             className="text-sm"
             style={{ color: "var(--chat-muted)" }}
           >
-            本專案為結合 LiteLLM · PostgreSQL · LangChain 並透過 Next.js 全端框架實作 RAG。
+            本專案為結合 LiteLLM · PostgreSQL 並透過 Next.js 全端框架實作 RAG。
           </span>
         </div>
 
@@ -93,7 +93,7 @@ export default function Home() {
           className="chat-rise-delay-2 text-sm"
           style={{ color: "var(--chat-muted)" }}
         >
-          Harry · feature/langchain-rag
+          Harry · RAG-lab
         </p>
       </div>
     </main>

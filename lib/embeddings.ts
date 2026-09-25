@@ -1,5 +1,4 @@
-import { Embeddings, type EmbeddingsParams } from '@langchain/core/embeddings'
-import { OpenAI } from 'openai'
+import OpenAI from 'openai'
 import {
   EMBEDDING_DIM,
   getLiteLLMApiKey,
@@ -9,23 +8,22 @@ import {
 
 export { EMBEDDING_DIM }
 
+type EmbeddingsOptions = {
+  apiKey?: string
+  baseURL?: string
+  model?: string
+  batchSize?: number
+}
+
 /**
- * LangChain Embeddings，透過 OpenAI-compatible API 呼叫 LiteLLM Proxy。
+ * 透過 OpenAI-compatible API 呼叫 LiteLLM Proxy 產生向量。
  */
-export class LiteLLMEmbeddings extends Embeddings {
+export class LiteLLMEmbeddings {
   private client: OpenAI
   private model: string
   batchSize: number
 
-  constructor(
-    fields?: EmbeddingsParams & {
-      apiKey?: string
-      baseURL?: string
-      model?: string
-      batchSize?: number
-    }
-  ) {
-    super(fields ?? {})
+  constructor(fields?: EmbeddingsOptions) {
     const apiKey = fields?.apiKey ?? getLiteLLMApiKey()
     this.model = fields?.model ?? LITELLM_EMBED_MODEL
     this.batchSize = fields?.batchSize ?? 16
@@ -51,18 +49,38 @@ export class LiteLLMEmbeddings extends Embeddings {
   }
 
   private async embedBatch(texts: string[]): Promise<number[][]> {
-    return this.caller.call(async () => {
-      const response = await this.client.embeddings.create({
-        model: this.model,
-        input: texts,
-        encoding_format: 'float',
-      })
+    const retries = 3
+    let lastError: unknown
 
-      return response.data
-        .slice()
-        .sort((a, b) => a.index - b.index)
-        .map((item) => item.embedding)
-    })
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await this.client.embeddings.create({
+          model: this.model,
+          input: texts,
+          encoding_format: 'float',
+        })
+
+        return response.data
+          .slice()
+          .sort((a, b) => a.index - b.index)
+          .map((item) => item.embedding)
+      } catch (err) {
+        lastError = err
+        const status = err instanceof OpenAI.APIError ? err.status : undefined
+        const retriable = status === 429 || status === 503
+        if (!retriable || attempt === retries) {
+          throw err
+        }
+
+        const delayMs = 1000 * 2 ** attempt
+        console.warn(
+          `[embeddings] ${status}，${delayMs}ms 後重試 (${attempt + 1}/${retries})`
+        )
+        await new Promise((resolve) => setTimeout(resolve, delayMs))
+      }
+    }
+
+    throw lastError
   }
 }
 
