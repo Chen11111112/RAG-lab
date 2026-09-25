@@ -52,7 +52,8 @@ begin
     documents.content,
     (1 - (documents.embedding <=> query_embedding))::float as similarity
   from documents
-  where 1 - (documents.embedding <=> query_embedding) > match_threshold
+  where documents.source = 'rag.md'
+    and 1 - (documents.embedding <=> query_embedding) > match_threshold
   order by documents.embedding <=> query_embedding
   limit match_count;
 end;

@@ -2,13 +2,7 @@
 
 import { getEmbeddings } from '@/lib/embeddings'
 import { getPool, toVectorLiteral } from '@/lib/db'
-import {
-  chunkMarkdown,
-  cosineSimilarity,
-  getRagSourceHash,
-  parseEmbedding,
-  type RagMatch,
-} from '@/lib/rag'
+import { chunkMarkdown, getRagSourceHash, type RagMatch } from '@/lib/rag'
 
 const SOURCE = 'rag.md'
 
@@ -71,52 +65,26 @@ export async function ingestRagMd() {
   return { success: true, chunkCount: parts.length, cached: false }
 }
 
-/** 優先用 match_documents；若不存在則改為應用層餘弦相似度 */
 async function searchInDatabase(
   queryEmbedding: number[],
   topK: number
 ): Promise<RagMatch[]> {
   const pool = getPool()
+  const { rows } = await pool.query<{
+    id: string
+    content: string
+    similarity: number
+  }>(
+    `SELECT id, content, similarity
+     FROM match_documents($1::vector, $2, $3)`,
+    [toVectorLiteral(queryEmbedding), 0.2, topK]
+  )
 
-  try {
-    const { rows } = await pool.query<{
-      id: string
-      content: string
-      similarity: number
-    }>(
-      `SELECT id, content, similarity
-       FROM match_documents($1::vector, $2, $3)`,
-      [toVectorLiteral(queryEmbedding), 0.2, topK]
-    )
-
-    return rows.map((row) => ({
-      id: Number(row.id),
-      content: row.content,
-      similarity: row.similarity,
-    }))
-  } catch (rpcError) {
-    const rpcMessage = rpcError instanceof Error ? rpcError.message : String(rpcError)
-
-    const { rows, rowCount } = await pool.query<{
-      id: string
-      content: string
-      embedding: string
-    }>(`SELECT id, content, embedding::text AS embedding FROM documents`)
-
-    if (rowCount === null) {
-      throw new Error(`PostgreSQL 搜尋失敗: ${rpcMessage}`)
-    }
-
-    return rows
-      .map((row) => ({
-        id: Number(row.id),
-        content: row.content,
-        similarity: cosineSimilarity(queryEmbedding, parseEmbedding(row.embedding)),
-      }))
-      .filter((row) => row.similarity > 0.2)
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, topK)
-  }
+  return rows.map((row) => ({
+    id: Number(row.id),
+    content: row.content,
+    similarity: row.similarity,
+  }))
 }
 
 /** RAG 檢索：確保索引在 PostgreSQL → LangChain query embedding → 回傳最相關片段 */

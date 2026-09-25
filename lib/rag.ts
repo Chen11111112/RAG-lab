@@ -65,40 +65,6 @@ export function chunkMarkdown(text: string): string[] {
   return chunks.filter((c) => c.length > 40)
 }
 
-/**
- * 餘弦相似度（RPC 尚未建立時，在應用層備援計算用）
- */
-export function cosineSimilarity(a: number[], b: number[]) {
-  let dot = 0
-  let na = 0
-  let nb = 0
-  const len = Math.min(a.length, b.length)
-  for (let i = 0; i < len; i++) {
-    dot += a[i] * b[i]
-    na += a[i] * a[i]
-    nb += b[i] * b[i]
-  }
-  if (na === 0 || nb === 0) return 0
-  return dot / (Math.sqrt(na) * Math.sqrt(nb))
-}
-
-// 解析 pgvector 回傳的 embedding（可能是 number[] 或字串）
-export function parseEmbedding(value: unknown): number[] {
-  if (Array.isArray(value)) return value as number[]
-  if (typeof value === 'string') {
-    try {
-      return JSON.parse(value) as number[]
-    } catch {
-      return value
-        .replace(/[\[\]]/g, '')
-        .split(',')
-        .map((n) => Number(n.trim()))
-        .filter((n) => !Number.isNaN(n))
-    }
-  }
-  return []
-}
-
 export async function readRagMarkdown() {
   return fs.readFile(RAG_FILE, 'utf8')
 }
