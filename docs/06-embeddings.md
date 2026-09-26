@@ -65,9 +65,8 @@ this.client = new OpenAI({
 
 ## 2. `embedDocuments` — index chunks
 
-chunkMarkdown 先把 rag.md 切成段落。
-embedDocuments 把這些段落送給 Qwen3-Embedding，每 16 段打一次 API，回傳向量陣列。它不切文字，也不寫資料庫。
-ingestRagMd 拿到向量後，自己 INSERT 進 PostgreSQL 的 documents 表。
+`chunkMarkdown` 把 rag.md 切段後
+`embedDocuments` 會把這些段落透過 `embedBatch` 送給 Qwen3-Embedding，每 16 段打一次 API，回傳向量陣列。
 
 ```tsx
 // app/actions/ragActions.ts / ingestRagMd()
@@ -144,7 +143,6 @@ POST /v1/embeddings
 Authorization: Bearer <LITELLM_API_KEY>
 ```
 
-`embedBatch` 遇到 429 / 503 會指數退避重試，次數與間隔比照 `lib/litellm.ts` 的 `fetchWithRetry`。聊天那條路仍直接走 `fetchWithRetry`，**不會**經過這裡。
 
 回傳後依 `index` 排序，再取出 `embedding`，避免 API 打亂順序時 `vectors[i]` 對錯 `parts[i]`。
 
@@ -156,32 +154,8 @@ Authorization: Bearer <LITELLM_API_KEY>
 :::
 
 
-## What the numbers must match
-
-| 契約 | 值 |
-| --- | --- |
-| 模型 | `LITELLM_EMBED_MODEL`（預設 `Qwen3-Embedding`） |
-| 維度 | `EMBEDDING_DIM = 4096`（`lib/litellm.ts`） |
-| 資料庫欄位 | `vector(4096)` |
-| 編碼 | `encoding_format: 'float'` |
-
-`EMBEDDING_DIM` 在 `embeddings.ts` 有 re-export，但寫入時沒有在程式裡檢查長度；維度對不對，要等 PostgreSQL 拒絕或檢索結果亂掉才會發現。
-
-
-:::info
-### [Defensive Function](https://ithelp.ithome.com.tw/articles/10410820/edit)
-
-這個檔對「沒 Key」有守門，對「HTTP / 維度」幾乎交給 SDK 與資料庫：
-
-- `getLiteLLMApiKey()` 失敗 → `Missing LITELLM_API_KEY`（建構 client 時就丟，還沒打到 Proxy）
-- LiteLLM 401 / 429 / 5xx → OpenAI SDK 丟錯，往上進 `ingestRagMd` 或 `searchRag`
-- 向量長度不是 4096 → 多半在 `INSERT ... $2::vector` 變成 `PostgreSQL 寫入失敗`
-:::
-
-
 ### What you should see
 
 - 第一題（或剛改過 `rag.md`）：會打一批（或多批）`/embeddings`，再打一次問題的 `/embeddings`
 - 同一份 `rag.md` 再問：只剩問題那一次 `/embeddings`
 - 沒設 Key：錯誤出現在第一次 `getEmbeddings()` / `new LiteLLMEmbeddings()`，不是寫庫之後
-- `vector dimension mismatch`：資料庫仍是舊維度，或寫入用的模型與 `vector(4096)` 不一致；見 [LiteLLM](./LITELLM.md)

@@ -40,7 +40,7 @@
     "**/*.mts",
     "app/page.tsx",
     "app/layout.tsx"
-  ],
+, "chatapi-proxy.js"  ],
   "exclude": [
     "node_modules"
   ]

@@ -1,4 +1,13 @@
-# 本專案使用方法
+# 關於本專案
+原為2026 暑期研習課程實作，使用資料庫與 AI 技術為 LangChain, Nvidia NIM, Supabase (PostgreSQL)。
+後改為串接 LiteLLM 與 伺服器本地建立 PostgreSQL （pgVector）資料庫。
+LiteLLM：https://hackmd.io/@HyC-1029/rkG2EdIKzx
+
+因伺服器維護與資源配置考量，目前暫未開啟後端服務。本站現僅供前端內容瀏覽與展示，登入後之資料儲存、新聞更新及 AI 對話等互動功能暫時無法使用。
+
+若有特殊需求，想進一步體驗完整功能，歡迎與陳泓毓聯繫。
+---
+> 以下為舊資料（研習當時索設置）
 參考：[說明文件](https://hyc.eshachem.com/program/llm-agent/8-%e5%9c%a8-next-js-%e4%b8%ad%e5%af%a6%e7%8f%be-rag-%e9%80%8f%e9%81%8envidia-nim-supabase-landchain/)  
 技術文件參考：[技術文件](https://hackmd.io/@HyC-1029/r1I7wY7Efg)  
   
