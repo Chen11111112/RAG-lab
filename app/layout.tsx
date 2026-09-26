@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Figtree, Syne } from "next/font/google";
 import "./globals.css";
 import { ReactNode } from "react";
+import MaintenanceNotice from "./MaintenanceNotice";
 
 const figtree = Figtree({
   subsets: ["latin"],
@@ -65,6 +66,7 @@ export default function Layout({
         </header>
 
         <div className="relative flex-1">{children}</div>
+        <MaintenanceNotice />
 
         <footer
           className="relative z-10 border-t px-4 py-5 text-center text-xs sm:px-8"
